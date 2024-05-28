@@ -25,7 +25,27 @@ export default function Chat() {
           </pre>
         );
       }
-      return <span key={index}>{part}</span>;
+      return part.split('\n').map((line, i) => {
+        if (line.startsWith('###')) {
+          return <h3 key={i} className="text-lg font-semibold mt-4 mb-4">{line.replace(/^###\s*/, '')}</h3>;
+        }
+        if (line.startsWith('####')) {
+          return <h4 key={i} className="text-base font-semibold mt-4 mb-4">{line.replace(/^####\s*/, '')}</h4>;
+        }
+        if (line.startsWith('-')) {
+          return <p key={i} className="mt-2">{line}</p>;
+        }
+        return (
+          <p key={i} className="leading-relaxed break-words">
+            {line.split(/(\*\*[^*]+\*\*)/g).map((chunk, j) => {
+              if (chunk.startsWith('**') && chunk.endsWith('**')) {
+                return <span key={j} className="font-bold">{chunk.replace(/\*\*/g, '')}</span>;
+              }
+              return chunk;
+            })}
+          </p>
+        );
+      });
     });
   };
 
