@@ -6,12 +6,37 @@ import { useState, useEffect, useRef } from 'react';
 export default function Chat() {
   const { messages, input, handleInputChange, handleSubmit } = useChat();
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null); // Change ref to TextAreaElement
+  const [emoji, setEmoji] = useState<string>(''); // State to store the current emoji
 
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const handleLanguageFrameworkClick = (languageFramework: string) => {
+    setEmoji(languageFramework);
+    if (inputRef.current) {
+      inputRef.current.value = `${languageFramework} `;
+      handleInputChange({ target: inputRef.current } as React.ChangeEvent<HTMLTextAreaElement>); // Update input value
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+    }
+  };
+
+  const handleInputChangeWithEmoji = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const currentValue = e.target.value;
+    if (!currentValue.startsWith(emoji)) {
+      e.target.value = `${emoji} ` + currentValue.replace(emoji, '').trimStart();
+    }
+    handleInputChange(e);
+  };
 
   const renderMessageContent = (content: string) => {
     const codeRegex = /```([\s\S]*?)```/g;
@@ -59,6 +84,52 @@ export default function Chat() {
           <p className="text-sm text-[#6b7280] leading-3">Your assistant for automated unit testing</p>
         </div>
 
+        {/* Language/Framework Buttons */}
+        <div className="flex flex-wrap gap-2 pb-4">
+          <button
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            onClick={() => handleLanguageFrameworkClick('🚀')}
+          >
+            JavaScript / Jest
+          </button>
+          <button
+            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+            onClick={() => handleLanguageFrameworkClick('🐍')}
+          >
+            Python / unittest
+          </button>
+          <button
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            onClick={() => handleLanguageFrameworkClick('☕')}
+          >
+            Java / JUnit
+          </button>
+          <button
+            className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+            onClick={() => handleLanguageFrameworkClick('💻')}
+          >
+            C# / NUnit
+          </button>
+          <button
+            className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
+            onClick={() => handleLanguageFrameworkClick('🐘')}
+          >
+            PHP / PHPUnit
+          </button>
+          <button
+            className="bg-teal-500 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded"
+            onClick={() => handleLanguageFrameworkClick('🌀')}
+          >
+            Go / testing
+          </button>
+          <button
+            className="bg-pink-500 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded"
+            onClick={() => handleLanguageFrameworkClick('🕊️')}
+          >
+            Swift / XCTest
+          </button>
+        </div>
+
         <div
           ref={chatContainerRef}
           className="pr-4 h-[620px] overflow-y-auto"
@@ -85,11 +156,13 @@ export default function Chat() {
         {/* Input box */}
         <div className="flex items-center pt-0">
           <form className="flex items-center justify-center w-full space-x-2" onSubmit={handleSubmit}>
-            <input
-              className="flex h-10 w-full rounded-md border border-[#e5e7eb] px-3 py-2 text-sm placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-[#9ca3af] disabled:cursor-not-allowed disabled:opacity-50 text-[#030712] focus-visible:ring-offset-2"
+            <textarea
+              ref={inputRef} // Attach the ref to the textarea element
+              className="flex h-20 w-full rounded-md border border-[#e5e7eb] px-3 py-2 text-sm placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-[#9ca3af] disabled:cursor-not-allowed disabled:opacity-50 text-[#030712] focus-visible:ring-offset-2"
               placeholder="Type your message"
               value={input}
-              onChange={handleInputChange}
+              onChange={handleInputChangeWithEmoji} // Use the new change handler
+              onKeyDown={handleKeyDown}
             />
             <button
               className="inline-flex items-center justify-center rounded-md text-sm font-medium text-[#f9fafb] disabled:pointer-events-none disabled:opacity-50 bg-black hover:bg-[#111827E6] h-10 px-4 py-2"
