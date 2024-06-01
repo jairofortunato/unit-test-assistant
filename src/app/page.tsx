@@ -18,7 +18,11 @@ export default function Chat() {
   const handleLanguageFrameworkClick = (languageFramework: string) => {
     setEmoji(languageFramework);
     if (inputRef.current) {
-      inputRef.current.value = `${languageFramework} `;
+      const currentValue = inputRef.current.value;
+      // Remove any existing emoji prefix
+      const newValue = currentValue.replace(/^🚀|🐍|☕|💻|🐘|🌀|🕊️ /, '');
+      // Prepend the new emoji
+      inputRef.current.value = `${languageFramework} ${newValue}`;
       handleInputChange({ target: inputRef.current } as React.ChangeEvent<HTMLTextAreaElement>); // Update input value
     }
   };
