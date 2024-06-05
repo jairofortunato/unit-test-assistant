@@ -1,6 +1,6 @@
 'use client';
 
-import { useChat } from './hooks/useChat';
+import { useChat } from 'ai/react';
 import { useState, useEffect, useRef } from 'react';
 
 // Mapping of library options to their respective emojis
@@ -37,13 +37,12 @@ const languageOptions: { [key: string]: string[] } = {
 };
 
 export default function Chat() {
-  const { messages, handleSubmit } = useChat();
+  const { messages, input, handleInputChange, handleSubmit } = useChat();
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const [emoji, setEmoji] = useState<string>('');
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('');
-  const [selectedLibrary, setSelectedLibrary] = useState<string>('');
-  const [userInput, setUserInput] = useState<string>('');
+  const inputRef = useRef<HTMLTextAreaElement>(null); // Change ref to TextAreaElement
+  const [emoji, setEmoji] = useState<string>(''); // State to store the current emoji
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(''); // State to store the selected language
+  const [selectedLibrary, setSelectedLibrary] = useState<string>(''); // State to store the selected library
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -51,19 +50,26 @@ export default function Chat() {
     }
   }, [messages]);
 
+  // Function to handle the change of the selected language
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedLanguage(e.target.value);
-    setSelectedLibrary('');
+    const selected = e.target.value;
+    setSelectedLanguage(selected);
+    setSelectedLibrary(''); // Reset the selected library when the language changes
+    console.log(`Language selected: ${selected}`);
   };
 
+  // Function to handle the change of the selected library
   const handleLibraryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
     setSelectedLibrary(selected);
     const combinedKey = `${selectedLanguage} / ${selected}`;
     const selectedEmoji = libraryEmojiMap[combinedKey];
     setEmoji(selectedEmoji);
+    console.log(`Library selected: ${selected}`);
+    console.log(`Emoji set to: ${selectedEmoji}`);
   };
 
+  // Function to handle key down events in the textarea
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -71,17 +77,32 @@ export default function Chat() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setUserInput(e.target.value);
+  // Function to handle input change events in the textarea
+  const handleInputChangeWithoutEmoji = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    handleInputChange(e);
   };
 
-  const getConcatenatedMessage = () => `${emoji} ${userInput.trim()}`;
+  // Function to concatenate the emoji and user's message
+  const getConcatenatedMessage = () => {
+    if (inputRef.current) {
+      const message = `${emoji} ${inputRef.current.value.trim()}`;
+      console.log(`Concatenated message: ${message}`);
+      return message;
+    }
+    return '';
+  };
 
+  // Override handleSubmit to use getConcatenatedMessage
   const handleSubmitWithEmoji = () => {
-    handleSubmit(getConcatenatedMessage());
-    setUserInput('');
+    const concatenatedMessage = getConcatenatedMessage();
+    console.log(`Submitting message: ${concatenatedMessage}`);
+    handleSubmit({
+      target: { value: concatenatedMessage },
+      preventDefault: () => {}, // Mock function to satisfy TypeScript
+    } as unknown as React.FormEvent<HTMLFormElement>);
   };
 
+  // Function to render the message content
   const renderMessageContent = (content: string) => {
     const codeRegex = /```([\s\S]*?)```/g;
     const parts = content.split(codeRegex);
@@ -120,12 +141,15 @@ export default function Chat() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24 overflow-auto">
+      {/* Chat Container */}
       <div className="w-full max-w-3xl bg-white p-6 rounded-lg border border-[#e5e7eb] shadow-lg h-[800px]">
+        {/* Heading */}
         <div className="chatbox-header flex flex-col space-y-1.5 pb-6">
           <h2 className="font-semibold text-lg tracking-tight text-black">Unit Test Assistant</h2>
           <p className="text-sm text-[#6b7280] leading-3">Your assistant for automated unit testing</p>
         </div>
 
+        {/* Language Dropdown */}
         <div className="pb-4">
           <select
             className="inline-flex items-center justify-center rounded-md text-sm font-medium text-[#030712] bg-white border border-[#e5e7eb] h-10 px-4 py-2"
@@ -141,6 +165,7 @@ export default function Chat() {
           </select>
         </div>
 
+        {/* Library Dropdown */}
         {selectedLanguage && (
           <div className="pb-4">
             <select
@@ -149,7 +174,7 @@ export default function Chat() {
               value={selectedLibrary}
             >
               <option value="" disabled>Select Library</option>
-              {languageOptions[selectedLanguage].map((lib: string) => (
+              {languageOptions[selectedLanguage].map((lib) => (
                 <option key={lib} value={lib}>
                   {lib}
                 </option>
@@ -173,14 +198,15 @@ export default function Chat() {
           ))}
         </div>
 
+        {/* Input box */}
         <div className="flex items-center pt-0">
           <form className="flex items-center justify-center w-full space-x-2" onSubmit={(e) => { e.preventDefault(); handleSubmitWithEmoji(); }}>
             <textarea
-              ref={inputRef}
+              ref={inputRef} // Attach the ref to the textarea element
               className="flex h-20 w-full rounded-md border border-[#e5e7eb] px-3 py-2 text-sm placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-[#9ca3af] disabled:cursor-not-allowed disabled:opacity-50 text-[#030712] focus-visible:ring-offset-2"
               placeholder="Type your message"
-              value={userInput}
-              onChange={handleInputChange}
+              value={input} 
+              onChange={handleInputChangeWithoutEmoji} // Use the new change handler
               onKeyDown={handleKeyDown}
             />
             <button
