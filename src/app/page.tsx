@@ -3,11 +3,46 @@
 import { useChat } from 'ai/react';
 import { useState, useEffect, useRef } from 'react';
 
+// Mapping of library options to their respective emojis
+const libraryEmojiMap: { [key: string]: string } = {
+  'JavaScript / Jest': '🚀',
+  'JavaScript / Mocha': '🚀✨',
+  'JavaScript / Jasmine': '🚀🌟',
+  'JavaScript / Ava': '🚀🔥',
+  'Python / unittest': '🐍',
+  'Python / pytest': '🐍✨',
+  'Python / nose2': '🐍🌟',
+  'Java / JUnit': '☕',
+  'Java / TestNG': '☕✨',
+  'C# / NUnit': '💻',
+  'C# / xUnit.net': '💻✨',
+  'PHP / PHPUnit': '🐘',
+  'PHP / Codeception': '🐘✨',
+  'Go / testing': '🌀',
+  'Go / Testify': '🌀✨',
+  'Swift / XCTest': '🕊️',
+  'Ruby / RSpec': '🦋',
+  'Ruby / Minitest': '🦋✨',
+};
+
+const languageOptions: { [key: string]: string[] } = {
+  'JavaScript': ['Jest', 'Mocha', 'Jasmine', 'Ava'],
+  'Python': ['unittest', 'pytest', 'nose2'],
+  'Java': ['JUnit', 'TestNG'],
+  'C#': ['NUnit', 'xUnit.net'],
+  'PHP': ['PHPUnit', 'Codeception'],
+  'Go': ['testing', 'Testify'],
+  'Swift': ['XCTest'],
+  'Ruby': ['RSpec', 'Minitest'],
+};
+
 export default function Chat() {
   const { messages, input, handleInputChange, handleSubmit } = useChat();
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null); // Change ref to TextAreaElement
   const [emoji, setEmoji] = useState<string>(''); // State to store the current emoji
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(''); // State to store the selected language
+  const [selectedLibrary, setSelectedLibrary] = useState<string>(''); // State to store the selected library
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -15,18 +50,28 @@ export default function Chat() {
     }
   }, [messages]);
 
-  const handleLanguageFrameworkClick = (languageFramework: string) => {
-    setEmoji(languageFramework);
+  // Function to handle the change of the selected language
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = e.target.value;
+    setSelectedLanguage(selected);
+    setSelectedLibrary(''); // Reset the selected library when the language changes
+  };
+
+  // Function to handle the change of the selected library
+  const handleLibraryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = e.target.value;
+    setSelectedLibrary(selected);
+    const combinedKey = `${selectedLanguage} / ${selected}`;
+    const selectedEmoji = libraryEmojiMap[combinedKey];
+    setEmoji(selectedEmoji);
     if (inputRef.current) {
-      const currentValue = inputRef.current.value;
-      // Remove any existing emoji prefix
-      const newValue = currentValue.replace(/^🚀|🐍|☕|💻|🐘|🌀|🕊️ /, '');
-      // Prepend the new emoji
-      inputRef.current.value = `${languageFramework} ${newValue}`;
-      handleInputChange({ target: inputRef.current } as React.ChangeEvent<HTMLTextAreaElement>); // Update input value
+      // Prepend the new emoji without keeping the old emoji
+      inputRef.current.value = `${selectedEmoji} `;
+      handleInputChange({ target: inputRef.current } as React.ChangeEvent<HTMLTextAreaElement>);
     }
   };
 
+  // Function to handle key down events in the textarea
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -34,6 +79,7 @@ export default function Chat() {
     }
   };
 
+  // Function to handle input change events in the textarea
   const handleInputChangeWithEmoji = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const currentValue = e.target.value;
     if (!currentValue.startsWith(emoji)) {
@@ -42,6 +88,15 @@ export default function Chat() {
     handleInputChange(e);
   };
 
+  // Function to concatenate the emoji and user's message
+  const getConcatenatedMessage = () => {
+    if (inputRef.current) {
+      return `${emoji} ${inputRef.current.value}`;
+    }
+    return '';
+  };
+
+  // Function to render the message content
   const renderMessageContent = (content: string) => {
     const codeRegex = /```([\s\S]*?)```/g;
     const parts = content.split(codeRegex);
@@ -88,51 +143,39 @@ export default function Chat() {
           <p className="text-sm text-[#6b7280] leading-3">Your assistant for automated unit testing</p>
         </div>
 
-        {/* Language/Framework Buttons */}
-        <div className="flex flex-wrap gap-2 pb-4">
-          <button
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            onClick={() => handleLanguageFrameworkClick('🚀')}
+        {/* Language Dropdown */}
+        <div className="pb-4">
+          <select
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium text-[#030712] bg-white border border-[#e5e7eb] h-10 px-4 py-2"
+            onChange={handleLanguageChange}
+            value={selectedLanguage}
           >
-            JavaScript / Jest
-          </button>
-          <button
-            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-            onClick={() => handleLanguageFrameworkClick('🐍')}
-          >
-            Python / unittest
-          </button>
-          <button
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-            onClick={() => handleLanguageFrameworkClick('☕')}
-          >
-            Java / JUnit
-          </button>
-          <button
-            className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
-            onClick={() => handleLanguageFrameworkClick('💻')}
-          >
-            C# / NUnit
-          </button>
-          <button
-            className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
-            onClick={() => handleLanguageFrameworkClick('🐘')}
-          >
-            PHP / PHPUnit
-          </button>
-          <button
-            className="bg-teal-500 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded"
-            onClick={() => handleLanguageFrameworkClick('🌀')}
-          >
-            Go / testing
-          </button>
-          <button
-            className="bg-pink-500 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded"
-            onClick={() => handleLanguageFrameworkClick('🕊️')}
-          >
-            Swift / XCTest
-          </button>
+            <option value="" disabled>Select Language</option>
+            {Object.keys(languageOptions).map((language) => (
+              <option key={language} value={language}>
+                {language}
+              </option>
+            ))}
+          </select>
         </div>
+
+        {/* Library Dropdown */}
+        {selectedLanguage && (
+          <div className="pb-4">
+            <select
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium text-[#030712] bg-white border border-[#e5e7eb] h-10 px-4 py-2"
+              onChange={handleLibraryChange}
+              value={selectedLibrary}
+            >
+              <option value="" disabled>Select Library</option>
+              {languageOptions[selectedLanguage].map((lib) => (
+                <option key={lib} value={lib}>
+                  {lib}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div
           ref={chatContainerRef}
@@ -141,14 +184,6 @@ export default function Chat() {
         >
           {messages.map((m, index) => (
             <div key={index} className="flex gap-3 my-4 text-black text-sm flex-1 break-words">
-              <span className="relative flex shrink-0 overflow-hidden rounded-full w-8 h-8">
-                <div className="rounded-full bg-gray-100 border p-1">
-                  <svg stroke="none" fill="black" strokeWidth="1.5" viewBox="0 0 24 24" aria-hidden="true" height="20" width="20" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round"
-                      d={m.role === 'user' ? "M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" : "M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 0 1 0-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 1 0 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 1 0 2.455L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 0 1-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 0 1.423L21.75 6l-1.035.259a2.25 2.25 0 0 0-2.456 2.456z"}></path>
-                  </svg>
-                </div>
-              </span>
               <p className="leading-relaxed break-words">
                 <span className="block font-bold text-black">{m.role === 'user' ? 'You' : 'Unit Test Assistant'}</span>
                 {renderMessageContent(m.content)}
@@ -164,7 +199,7 @@ export default function Chat() {
               ref={inputRef} // Attach the ref to the textarea element
               className="flex h-20 w-full rounded-md border border-[#e5e7eb] px-3 py-2 text-sm placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-[#9ca3af] disabled:cursor-not-allowed disabled:opacity-50 text-[#030712] focus-visible:ring-offset-2"
               placeholder="Type your message"
-              value={input}
+              value={input} 
               onChange={handleInputChangeWithEmoji} // Use the new change handler
               onKeyDown={handleKeyDown}
             />
