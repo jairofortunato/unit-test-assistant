@@ -28,10 +28,7 @@ export async function POST(req: Request) {
       responseBody += decoder.decode(value, { stream: !done });
     }
 
-    // Clean the response by preserving the spaces between words and ensuring proper formatting
-    const cleanResponse = responseBody.replace(/^\d+:/gm, '').replace(/"\s*|\s*"/g, '').replace(/\\n/g, '\n').replace(/\\t/g, ' ').trim();
-
-    return new Response(JSON.stringify({ data: cleanResponse }), {
+    return new Response(JSON.stringify({ data: responseBody }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {

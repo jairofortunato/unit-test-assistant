@@ -37,9 +37,14 @@ const languageOptions: { [key: string]: string[] } = {
   'Ruby': ['RSpec', 'Minitest'],
 };
 
+const cleanResponse = (response: string) => {
+  return response.replace(/^\d+:/gm, ' ').replace(/"\s*|\s*"/g, '').replace(/\\n/g, '\n').replace(/\\t/g, ' ').trim();
+};
+
 const renderMessageContent = (content: string) => {
+  const cleanedContent = cleanResponse(content); // Clean the content before rendering
   const codeRegex = /```([\s\S]*?)```/g;
-  const parts = content.split(codeRegex);
+  const parts = cleanedContent.split(codeRegex);
 
   return parts.map((part, index) => {
     if (index % 2 === 1) {
