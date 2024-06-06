@@ -40,9 +40,12 @@ export default function Chat() {
   const { messages, input, handleInputChange, handleSubmit } = useChat();
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null); // Change ref to TextAreaElement
+  const formRef = useRef<HTMLFormElement>(null); // Ref to the old input form
+  const newFormRef = useRef<HTMLFormElement>(null); // Ref to the new input form
   const [emoji, setEmoji] = useState<string>(''); // State to store the current emoji
   const [selectedLanguage, setSelectedLanguage] = useState<string>(''); // State to store the selected language
   const [selectedLibrary, setSelectedLibrary] = useState<string>(''); // State to store the selected library
+  const [newInput, setNewInput] = useState<string>(''); // State to store the new input value
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -72,10 +75,12 @@ export default function Chat() {
   };
 
   // Function to handle key down events in the textarea
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleNewInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+      if (newFormRef.current) {
+        newFormRef.current.requestSubmit();
+      }
     }
   };
 
@@ -86,14 +91,6 @@ export default function Chat() {
       e.target.value = `${emoji} ` + currentValue.replace(emoji, '').trimStart();
     }
     handleInputChange(e);
-  };
-
-  // Function to concatenate the emoji and user's message
-  const getConcatenatedMessage = () => {
-    if (inputRef.current) {
-      return `${emoji} ${inputRef.current.value}`;
-    }
-    return '';
   };
 
   // Function to render the message content
@@ -133,18 +130,39 @@ export default function Chat() {
     });
   };
 
+  // Function to remove emoji from user's message
+  const removeEmojiFromMessage = (message: string) => {
+    return message.replace(/^[^\s]+ /, ''); // Remove the first emoji and the following space
+  };
+
+  const handleNewInputSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (inputRef.current) {
+      // Append the new input to the existing value
+      inputRef.current.value += ` ${newInput}`;
+      handleInputChange({ target: inputRef.current } as React.ChangeEvent<HTMLTextAreaElement>);
+      setNewInput('');
+      // Trigger the send button of the old input after 0.5 seconds
+      setTimeout(() => {
+        if (formRef.current) {
+          formRef.current.requestSubmit();
+        }
+      }, 500);
+    }
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24 overflow-auto">
       {/* Chat Container */}
-      <div className="w-full max-w-3xl bg-white p-6 rounded-lg border border-[#e5e7eb] shadow-lg h-[800px]">
+      <div className="w-full max-w-3xl bg-white p-6 rounded-lg border border-[#e5e7eb] shadow-lg h-[1000px]"> {/* Increased height */}
         {/* Heading */}
         <div className="chatbox-header flex flex-col space-y-1.5 pb-6">
           <h2 className="font-semibold text-lg tracking-tight text-black">Unit Test Assistant</h2>
           <p className="text-sm text-[#6b7280] leading-3">Your assistant for automated unit testing</p>
         </div>
 
-        {/* Language Dropdown */}
-        <div className="pb-4">
+        {/* Dropdowns Container */}
+        <div className="pb-4 flex space-x-4"> {/* Use flex to place them side by side */}
           <select
             className="inline-flex items-center justify-center rounded-md text-sm font-medium text-[#030712] bg-white border border-[#e5e7eb] h-10 px-4 py-2"
             onChange={handleLanguageChange}
@@ -157,11 +175,8 @@ export default function Chat() {
               </option>
             ))}
           </select>
-        </div>
 
-        {/* Library Dropdown */}
-        {selectedLanguage && (
-          <div className="pb-4">
+          {selectedLanguage && (
             <select
               className="inline-flex items-center justify-center rounded-md text-sm font-medium text-[#030712] bg-white border border-[#e5e7eb] h-10 px-4 py-2"
               onChange={handleLibraryChange}
@@ -174,34 +189,52 @@ export default function Chat() {
                 </option>
               ))}
             </select>
-          </div>
-        )}
+          )}
+        </div>
 
         <div
           ref={chatContainerRef}
-          className="pr-4 h-[620px] overflow-y-auto"
+          className="pr-4 h-[820px] overflow-y-auto" 
           style={{ minWidth: '100%', display: 'block' }}
         >
           {messages.map((m, index) => (
             <div key={index} className="flex gap-3 my-4 text-black text-sm flex-1 break-words">
               <p className="leading-relaxed break-words">
                 <span className="block font-bold text-black">{m.role === 'user' ? 'You' : 'Unit Test Assistant'}</span>
-                {renderMessageContent(m.content)}
+                {m.role === 'user' ? renderMessageContent(removeEmojiFromMessage(m.content)) : renderMessageContent(m.content)}
               </p>
             </div>
           ))}
         </div>
 
-        {/* Input box */}
-        <div className="flex items-center pt-0">
-          <form className="flex items-center justify-center w-full space-x-2" onSubmit={handleSubmit}>
+        {/* New Input box */}
+        <div className="flex items-center pt-0 mb-4">
+          <form className="flex items-center justify-center w-full space-x-2" ref={newFormRef} onSubmit={handleNewInputSubmit}>
+            <textarea
+              className="flex h-20 w-full rounded-md border border-[#e5e7eb] px-3 py-2 text-sm placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-[#9ca3af] disabled:cursor-not-allowed disabled:opacity-50 text-[#030712] focus-visible:ring-offset-2"
+              placeholder="Type your message here"
+              value={newInput}
+              onChange={(e) => setNewInput(e.target.value)}
+              onKeyDown={handleNewInputKeyDown} // Use the new key down handler
+            />
+            <button
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium text-[#f9fafb] disabled:pointer-events-none disabled:opacity-50 bg-black hover:bg-[#111827E6] h-10 px-4 py-2"
+              type="submit"
+            >
+              Send
+            </button>
+          </form>
+        </div>
+
+        {/* Original Input box */}
+        <div className="flex items-center pt-0 hidden">
+          <form className="flex items-center justify-center w-full space-x-2" ref={formRef} onSubmit={handleSubmit}>
             <textarea
               ref={inputRef} // Attach the ref to the textarea element
               className="flex h-20 w-full rounded-md border border-[#e5e7eb] px-3 py-2 text-sm placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-[#9ca3af] disabled:cursor-not-allowed disabled:opacity-50 text-[#030712] focus-visible:ring-offset-2"
               placeholder="Type your message"
-              value={input} 
+              value={input}
               onChange={handleInputChangeWithEmoji} // Use the new change handler
-              onKeyDown={handleKeyDown}
             />
             <button
               className="inline-flex items-center justify-center rounded-md text-sm font-medium text-[#f9fafb] disabled:pointer-events-none disabled:opacity-50 bg-black hover:bg-[#111827E6] h-10 px-4 py-2"
