@@ -2,6 +2,7 @@
 
 import { useChat } from 'ai/react';
 import { useState, useEffect, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid'; // Import UUID for generating unique IDs
 
 // Mapping of library options to their respective emojis
 const libraryEmojiMap: { [key: string]: string } = {
@@ -36,6 +37,42 @@ const languageOptions: { [key: string]: string[] } = {
   'Ruby': ['RSpec', 'Minitest'],
 };
 
+const renderMessageContent = (content: string) => {
+  const codeRegex = /```([\s\S]*?)```/g;
+  const parts = content.split(codeRegex);
+
+  return parts.map((part, index) => {
+    if (index % 2 === 1) {
+      return (
+        <pre key={index} className="bg-black text-white p-2 rounded-md overflow-auto">
+          <code>{part}</code>
+        </pre>
+      );
+    }
+    return part.split('\n').map((line, i) => {
+      if (line.startsWith('###')) {
+        return <h3 key={i} className="text-lg font-semibold mt-4 mb-4">{line.replace(/^###\s*/, '')}</h3>;
+      }
+      if (line.startsWith('####')) {
+        return <h4 key={i} className="text-base font-semibold mt-4 mb-4">{line.replace(/^####\s*/, '')}</h4>;
+      }
+      if (line.startsWith('-')) {
+        return <p key={i} className="mt-2">{line}</p>;
+      }
+      return (
+        <p key={i} className="leading-relaxed break-words">
+          {line.split(/(\*\*[^*]+\*\*)/g).map((chunk, j) => {
+            if (chunk.startsWith('**') && chunk.endsWith('**')) {
+              return <span key={j} className="font-bold">{chunk.replace(/\*\*/g, '')}</span>;
+            }
+            return chunk;
+          })}
+        </p>
+      );
+    });
+  });
+};
+
 export default function Chat() {
   const { messages, input, handleInputChange, handleSubmit } = useChat();
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -43,12 +80,13 @@ export default function Chat() {
   const [emoji, setEmoji] = useState<string>(''); // State to store the current emoji
   const [selectedLanguage, setSelectedLanguage] = useState<string>(''); // State to store the selected language
   const [selectedLibrary, setSelectedLibrary] = useState<string>(''); // State to store the selected library
+  const [customMessages, setCustomMessages] = useState(messages); // Custom state to store messages
 
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [customMessages]);
 
   // Function to handle the change of the selected language
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -64,73 +102,63 @@ export default function Chat() {
     const combinedKey = `${selectedLanguage} / ${selected}`;
     const selectedEmoji = libraryEmojiMap[combinedKey];
     setEmoji(selectedEmoji);
-    if (inputRef.current) {
-      // Prepend the new emoji without keeping the old emoji
-      inputRef.current.value = `${selectedEmoji} `;
-      handleInputChange({ target: inputRef.current } as React.ChangeEvent<HTMLTextAreaElement>);
-    }
   };
 
   // Function to handle key down events in the textarea
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+      handleSubmitWithEmoji(e as unknown as React.FormEvent<HTMLFormElement>);
     }
   };
 
-  // Function to handle input change events in the textarea
-  const handleInputChangeWithEmoji = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const currentValue = e.target.value;
-    if (!currentValue.startsWith(emoji)) {
-      e.target.value = `${emoji} ` + currentValue.replace(emoji, '').trimStart();
-    }
-    handleInputChange(e);
-  };
-
-  // Function to concatenate the emoji and user's message
-  const getConcatenatedMessage = () => {
+  // Function to handle form submission with emoji
+  const handleSubmitWithEmoji = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (inputRef.current) {
-      return `${emoji} ${inputRef.current.value}`;
-    }
-    return '';
-  };
+      const userMessage = `${emoji} ${inputRef.current.value}`.trim();
+      const requestBody = {
+        messages: [
+          { role: 'user', content: userMessage }
+        ],
+      };
 
-  // Function to render the message content
-  const renderMessageContent = (content: string) => {
-    const codeRegex = /```([\s\S]*?)```/g;
-    const parts = content.split(codeRegex);
+      console.log('Sending request with body:', requestBody);
 
-    return parts.map((part, index) => {
-      if (index % 2 === 1) {
-        return (
-          <pre key={index} className="bg-black text-white p-2 rounded-md overflow-auto">
-            <code>{part}</code>
-          </pre>
-        );
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        const responseText = await response.text();
+        console.log('Raw response text:', responseText);
+
+        if (response.ok) {
+          const data = JSON.parse(responseText);
+          console.log('Response data:', data);
+
+          // Append the new message to the customMessages state with unique IDs
+          setCustomMessages([
+            ...customMessages, 
+            { id: uuidv4(), role: 'user', content: userMessage }, 
+            { id: uuidv4(), role: 'assistant', content: data.data }
+          ]);
+
+          // Clear the input field
+          if (inputRef.current) {
+            inputRef.current.value = '';
+          }
+        } else {
+          console.error('Failed to send message', response.statusText);
+        }
+      } catch (error) {
+        console.error('Error parsing JSON response:', error);
       }
-      return part.split('\n').map((line, i) => {
-        if (line.startsWith('###')) {
-          return <h3 key={i} className="text-lg font-semibold mt-4 mb-4">{line.replace(/^###\s*/, '')}</h3>;
-        }
-        if (line.startsWith('####')) {
-          return <h4 key={i} className="text-base font-semibold mt-4 mb-4">{line.replace(/^####\s*/, '')}</h4>;
-        }
-        if (line.startsWith('-')) {
-          return <p key={i} className="mt-2">{line}</p>;
-        }
-        return (
-          <p key={i} className="leading-relaxed break-words">
-            {line.split(/(\*\*[^*]+\*\*)/g).map((chunk, j) => {
-              if (chunk.startsWith('**') && chunk.endsWith('**')) {
-                return <span key={j} className="font-bold">{chunk.replace(/\*\*/g, '')}</span>;
-              }
-              return chunk;
-            })}
-          </p>
-        );
-      });
-    });
+    }
   };
 
   return (
@@ -182,8 +210,8 @@ export default function Chat() {
           className="pr-4 h-[620px] overflow-y-auto"
           style={{ minWidth: '100%', display: 'block' }}
         >
-          {messages.map((m, index) => (
-            <div key={index} className="flex gap-3 my-4 text-black text-sm flex-1 break-words">
+          {customMessages.map((m, index) => (
+            <div key={m.id || index} className="flex gap-3 my-4 text-black text-sm flex-1 break-words">
               <p className="leading-relaxed break-words">
                 <span className="block font-bold text-black">{m.role === 'user' ? 'You' : 'Unit Test Assistant'}</span>
                 {renderMessageContent(m.content)}
@@ -194,13 +222,13 @@ export default function Chat() {
 
         {/* Input box */}
         <div className="flex items-center pt-0">
-          <form className="flex items-center justify-center w-full space-x-2" onSubmit={handleSubmit}>
+          <form className="flex items-center justify-center w-full space-x-2" onSubmit={handleSubmitWithEmoji}>
             <textarea
               ref={inputRef} // Attach the ref to the textarea element
               className="flex h-20 w-full rounded-md border border-[#e5e7eb] px-3 py-2 text-sm placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-[#9ca3af] disabled:cursor-not-allowed disabled:opacity-50 text-[#030712] focus-visible:ring-offset-2"
               placeholder="Type your message"
               value={input} 
-              onChange={handleInputChangeWithEmoji} // Use the new change handler
+              onChange={handleInputChange} // Use the original change handler
               onKeyDown={handleKeyDown}
             />
             <button
