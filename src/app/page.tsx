@@ -2,6 +2,8 @@
 
 import { useChat } from 'ai/react';
 import { useState, useEffect, useRef } from 'react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // Mapping of library options to their respective emojis
 const libraryEmojiMap: { [key: string]: string } = {
@@ -101,9 +103,9 @@ export default function Chat() {
     return parts.map((part, index) => {
       if (index % 2 === 1) {
         return (
-          <pre key={index} className="bg-black text-white p-2 rounded-md overflow-auto">
-            <code>{part}</code>
-          </pre>
+          <SyntaxHighlighter key={index} language="javascript" style={vs} className="rounded-md overflow-auto">
+            {part}
+          </SyntaxHighlighter>
         );
       }
       return part.split('\n').map((line, i) => {
